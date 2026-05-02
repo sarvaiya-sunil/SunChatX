@@ -1,3 +1,4 @@
+import { kMaxLength } from "buffer";
 import mongoose from "mongoose";
 
 const messageSChema = new mongoose.Schema(
@@ -14,6 +15,8 @@ const messageSChema = new mongoose.Schema(
     },
     text: {
       type: String,
+      trim: true,
+      maxlength: 2000,
     },
     image: {
       type: String,
