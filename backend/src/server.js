@@ -17,7 +17,7 @@ app.use(cookieParser());
 app.set("trust proxy", 1);
 
 app.use("/api/auth", authRoutes);
-app.use("/api/messages", messageRoutes);
+app.use("/api/message", messageRoutes);
 
 connectDB();
 
