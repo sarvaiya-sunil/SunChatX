@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth-route.js";
@@ -13,6 +14,7 @@ const app = express();
 const PORT = ENV.PORT || 3000;
 
 app.use(express.json());
+app.use(cors({ origin: ENV.CLIENT_URL, credentials: true }));
 app.use(cookieParser());
 
 app.set("trust proxy", 1); // This is for arcjetProtection -> Rate limit
