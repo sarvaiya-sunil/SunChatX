@@ -16,11 +16,11 @@ function SignUpPage() {
     email: "",
     password: "",
   });
-  const { signUp, isSigningUp } = useAuthStore();
+  const { signup, isSigningUp } = useAuthStore();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    signUp(formData);
+    signup(formData);
   };
 
   return (
