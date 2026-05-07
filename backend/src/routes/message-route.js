@@ -1,5 +1,4 @@
 import express from "express";
-import { send } from "process";
 import {
   getAllContacts,
   getChatPartners,
@@ -17,9 +16,5 @@ router.get("/contacts", getAllContacts);
 router.get("/chats", getChatPartners);
 router.get("/:id", getMessagesByUserId);
 router.post("/send/:id", sendMessage);
-
-router.get("/send", (req, res) => {
-  res.send("Send Message Endpoint");
-});
 
 export default router;
