@@ -68,9 +68,17 @@ export const sendMessage = async (req, res) => {
     await newMessage.save();
 
     //todo: send message in real-time if user is online - socket.io
-    const receiverSocketId = getReceiverUserId(receiverId);
+    const receiverSocketId = getReceiverUserId(receiverId.toString());
+    console.log(`Sending message from ${senderId} to ${receiverId}`);
+    console.log(`Receiver socket ID: ${receiverSocketId}`);
     if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", newMessage);
+      io.to(receiverSocketId).emit(
+        "newMessage",
+        newMessage.toObject ? newMessage.toObject() : newMessage,
+      );
+      console.log(`Message emitted to ${receiverSocketId}`);
+    } else {
+      console.log(`Receiver ${receiverId} is not online`);
     }
 
     res.status(201).json(newMessage);

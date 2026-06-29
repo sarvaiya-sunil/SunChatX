@@ -21,17 +21,27 @@ const io = new Server(server, {
 io.use(socketAuthMiddleware);
 
 export function getReceiverUserId(userId) {
-  return userSocketMap[userId];
+  const socketId = userSocketMap[userId];
+  console.log(`getReceiverUserId(${userId}):`, socketId);
+  console.log("Current userSocketMap:", userSocketMap);
+  return socketId;
 }
 
 // this is for storing online users
 const userSocketMap = {}; //{userId:socketId}
 
 io.on("connection", (socket) => {
-  console.log("A user connected", socket.user.fullName);
+  console.log(
+    "A user connected",
+    socket.user.fullName,
+    "with socket ID:",
+    socket.id,
+  );
 
   const userId = socket.userId;
   userSocketMap[userId] = socket.id;
+  console.log(`User ${userId} mapped to socket ${socket.id}`);
+  console.log("Updated userSocketMap:", userSocketMap);
 
   //io.emit() is used to send events to all connected clients
   io.emit("getOnlineUsers", Object.keys(userSocketMap));

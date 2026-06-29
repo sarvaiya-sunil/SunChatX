@@ -99,21 +99,49 @@ export const useChatStore = create((set, get) => ({
     if (!selectedUser) return;
 
     const socket = useAuthStore.getState().socket;
-    if (!socket) return;
+    if (!socket) {
+      console.log("Socket not available for subscription");
+      return;
+    }
 
-    socket.off("newMessage");
-    socket.on("newMessage", (newMessage) => {
-      const isMessageSentFromSelectedUser =
-        newMessage.senderId === selectedUser._id;
-      if (!isMessageSentFromSelectedUser) return;
+    const setupMessageListener = () => {
+      socket.off("newMessage");
+      socket.on("newMessage", (newMessage) => {
+        console.log("Received newMessage event:", newMessage);
+        const messageSenderId = newMessage.senderId?._id || newMessage.senderId;
+        const selectedUserId = selectedUser._id?._id || selectedUser._id;
+        console.log(
+          `Comparing sender ${messageSenderId} with selected ${selectedUserId}`,
+        );
+        const isMessageSentFromSelectedUser =
+          messageSenderId === selectedUserId ||
+          messageSenderId.toString() === selectedUserId.toString();
+        if (!isMessageSentFromSelectedUser) {
+          console.log("Message from different user, ignoring");
+          return;
+        }
 
-      const currentMessage = get().messages;
-      set({ messages: [...currentMessage, newMessage] });
-      if (isSoundEnabled) {
-        notificationSound.currentTime = 0;
-        notificationSound.play().catch((e) => console.log("Audio play failed"));
-      }
-    });
+        console.log("Adding message to UI");
+        const currentMessage = get().messages;
+        set({ messages: [...currentMessage, newMessage] });
+        if (isSoundEnabled) {
+          notificationSound.currentTime = 0;
+          notificationSound
+            .play()
+            .catch((e) => console.log("Audio play failed"));
+        }
+      });
+    };
+
+    if (!socket.connected) {
+      console.log("Socket not connected, waiting for connection...");
+      socket.once("connect", () => {
+        console.log("Socket connected, setting up listener");
+        setupMessageListener();
+      });
+    } else {
+      setupMessageListener();
+    }
   },
 
   unsubscribeFromMessages: () => {
