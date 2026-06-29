@@ -2,12 +2,24 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { ENV } from "../lib/env.js";
 
+const getTokenFromHandshake = (socket) => {
+  const authToken = socket.handshake.auth?.token;
+  if (authToken) return authToken;
+
+  const cookieHeader = socket.handshake.headers.cookie;
+  if (!cookieHeader) return null;
+
+  const cookie = cookieHeader
+    .split(";")
+    .map((row) => row.trim())
+    .find((row) => row.startsWith("jwt="));
+
+  return cookie?.split("=")[1];
+};
+
 export const socketAuthMiddleware = async (socket, next) => {
   try {
-    const token = socket.handshake.headers.cookie
-      ?.split("; ")
-      .find((row) => row.startsWith("jwt="))
-      ?.split("=")[1];
+    const token = getTokenFromHandshake(socket);
 
     if (!token) {
       console.log("Socket connection rejected: No token provided");

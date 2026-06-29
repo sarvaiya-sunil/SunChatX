@@ -62,8 +62,9 @@ export const useChatStore = create((set, get) => ({
     const { selectedUser, messages } = get();
     const { authUser } = useAuthStore.getState();
 
-    const tempId = `temp-${Date.now()}`;
+    if (!selectedUser || !authUser) return;
 
+    const tempId = `temp-${Date.now()}`;
     const optimisticMessage = {
       _id: tempId,
       senderId: authUser._id,
@@ -71,21 +72,23 @@ export const useChatStore = create((set, get) => ({
       text: messageData.text,
       image: messageData.image,
       createdAt: new Date().toISOString(),
-      isOptimistic: true, // to identify optimistic message
+      isOptimistic: true,
     };
 
-    // immediately update the UI by adding message
-    set({ messages: [...messages, optimisticMessage] });
+    const optimisticMessages = [...messages, optimisticMessage];
+    set({ messages: optimisticMessages });
 
     try {
-      console.log("calllllllll");
       const res = await axiosInstance.post(
         `message/send/${selectedUser._id}`,
         messageData,
       );
-      set({ messages: messages.concat(res.data) });
+      const finalMessages = optimisticMessages.filter(
+        (msg) => msg._id !== tempId,
+      );
+      finalMessages.push(res.data);
+      set({ messages: finalMessages });
     } catch (error) {
-      // removing optimistic message on failure
       set({ messages: messages });
       toast.error(error.response?.data?.message || "Something went wrong");
     }
@@ -96,6 +99,9 @@ export const useChatStore = create((set, get) => ({
     if (!selectedUser) return;
 
     const socket = useAuthStore.getState().socket;
+    if (!socket) return;
+
+    socket.off("newMessage");
     socket.on("newMessage", (newMessage) => {
       const isMessageSentFromSelectedUser =
         newMessage.senderId === selectedUser._id;
@@ -112,6 +118,6 @@ export const useChatStore = create((set, get) => ({
 
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
-    socket.off("newMessage");
+    socket?.off("newMessage");
   },
 }));

@@ -4,7 +4,8 @@ import toast from "react-hot-toast";
 import { Navigate } from "react-router";
 import { io } from "socket.io-client";
 
-const BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+const BASE_URL = BACKEND_URL.replace(/\/api\/?$/, "");
 
 export const useAuthStore = create((set, get) => ({
   authUser: null,
@@ -89,24 +90,47 @@ export const useAuthStore = create((set, get) => ({
   },
 
   connectSocket: () => {
-    const { authUser } = get();
-    if (!authUser || get().socket?.connected) return;
+    const { authUser, socket: existingSocket } = get();
+    if (!authUser) return;
 
-    console.log("sending request to socket...");
+    if (existingSocket) {
+      existingSocket.off("getOnlineUsers");
+      existingSocket.disconnect();
+    }
 
-    const socket = io(BASE_URL, { withCredentials: true });
-    console.log("response come...", socket);
-    socket.connect();
+    const token = document.cookie
+      .split(";")
+      .map((row) => row.trim())
+      .find((row) => row.startsWith("jwt="))
+      ?.split("=")[1];
 
-    set({ socket });
+    const socket = io(BASE_URL, {
+      withCredentials: true,
+      auth: token ? { token } : undefined,
+      transports: ["websocket", "polling"],
+    });
 
-    //listening for online users
+    set({ socket, onlineUsers: [] });
+
+    socket.on("connect", () => {
+      console.log("Socket connected");
+    });
+
+    socket.on("connect_error", (error) => {
+      console.log("Socket connection error:", error.message);
+    });
+
     socket.on("getOnlineUsers", (userIds) => {
       set({ onlineUsers: userIds });
     });
   },
 
   disconnectSocket: () => {
-    if (get().socket?.connected) get().socket.disconnect();
+    const socket = get().socket;
+    if (socket) {
+      socket.off("getOnlineUsers");
+      socket.disconnect();
+    }
+    set({ socket: null, onlineUsers: [] });
   },
 }));
