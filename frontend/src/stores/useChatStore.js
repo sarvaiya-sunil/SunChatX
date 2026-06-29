@@ -154,7 +154,9 @@ export const useChatStore = create((set, get) => ({
           console.log("Message already exists, skipping duplicate");
         }
 
-        if (isSoundEnabled) {
+        // Play notification sound only when receiving a message from someone else
+        const isReceivedMessage = messageSenderId !== authUserId;
+        if (isReceivedMessage && isSoundEnabled) {
           notificationSound.currentTime = 0;
           notificationSound
             .play()
