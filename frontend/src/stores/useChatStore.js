@@ -109,21 +109,40 @@ export const useChatStore = create((set, get) => ({
       socket.on("newMessage", (newMessage) => {
         console.log("Received newMessage event:", newMessage);
         const messageSenderId = newMessage.senderId?._id || newMessage.senderId;
+        const { authUser } = useAuthStore.getState();
+        const authUserId = authUser._id;
         const selectedUserId = selectedUser._id?._id || selectedUser._id;
+
         console.log(
-          `Comparing sender ${messageSenderId} with selected ${selectedUserId}`,
+          `Comparing - messageSender: ${messageSenderId}, selectedUser: ${selectedUserId}, authUser: ${authUserId}`,
         );
-        const isMessageSentFromSelectedUser =
+
+        // Check if message is from selected user OR if we're receiving our own message
+        const isMessageForThisChat =
           messageSenderId === selectedUserId ||
-          messageSenderId.toString() === selectedUserId.toString();
-        if (!isMessageSentFromSelectedUser) {
-          console.log("Message from different user, ignoring");
+          messageSenderId.toString() === selectedUserId.toString() ||
+          messageSenderId === authUserId ||
+          messageSenderId.toString() === authUserId.toString();
+
+        if (!isMessageForThisChat) {
+          console.log("Message not relevant to current chat, ignoring");
           return;
         }
 
         console.log("Adding message to UI");
-        const currentMessage = get().messages;
-        set({ messages: [...currentMessage, newMessage] });
+        const currentMessages = get().messages;
+
+        // Avoid duplicates: check if message already exists by comparing _id
+        const messageExists = currentMessages.some(
+          (msg) => msg._id === newMessage._id,
+        );
+
+        if (!messageExists) {
+          set({ messages: [...currentMessages, newMessage] });
+        } else {
+          console.log("Message already exists, skipping duplicate");
+        }
+
         if (isSoundEnabled) {
           notificationSound.currentTime = 0;
           notificationSound
