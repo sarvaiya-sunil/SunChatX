@@ -7,7 +7,7 @@ export const getCookieOptions = () => ({
   maxAge: 7 * 24 * 60 * 60 * 1000,
   httpOnly: true,
   secure: isProduction,
-  sameSite: isProduction ? "none" : "lax",
+  sameSite: "none",
 });
 
 export const generateToken = (userId, res) => {

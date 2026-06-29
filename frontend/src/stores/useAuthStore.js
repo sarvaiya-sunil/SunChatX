@@ -98,15 +98,8 @@ export const useAuthStore = create((set, get) => ({
       existingSocket.disconnect();
     }
 
-    const token = document.cookie
-      .split(";")
-      .map((row) => row.trim())
-      .find((row) => row.startsWith("jwt="))
-      ?.split("=")[1];
-
     const socket = io(BASE_URL, {
       withCredentials: true,
-      auth: token ? { token } : undefined,
       transports: ["websocket", "polling"],
     });
 

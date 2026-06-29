@@ -20,15 +20,31 @@ const io = new Server(server, {
 // middleware for all socket connections
 io.use(socketAuthMiddleware);
 
-export function getReceiverUserId(userId) {
-  const socketId = userSocketMap[userId];
-  console.log(`getReceiverUserId(${userId}):`, socketId);
-  console.log("Current userSocketMap:", userSocketMap);
-  return socketId;
-}
+// this is for storing online users and multi-device socket lists per user
+const userSocketMap = {}; // {userId: Set<socketId> }
 
-// this is for storing online users
-const userSocketMap = {}; //{userId:socketId}
+const addSocketForUser = (userId, socketId) => {
+  if (!userSocketMap[userId]) {
+    userSocketMap[userId] = new Set();
+  }
+  userSocketMap[userId].add(socketId);
+};
+
+const removeSocketForUser = (userId, socketId) => {
+  if (!userSocketMap[userId]) return;
+  userSocketMap[userId].delete(socketId);
+  if (userSocketMap[userId].size === 0) {
+    delete userSocketMap[userId];
+  }
+};
+
+export function getReceiverUserId(userId) {
+  const socketIds = userSocketMap[userId];
+  const socketIdArray = socketIds ? Array.from(socketIds) : [];
+  console.log(`getReceiverUserId(${userId}):`, socketIdArray);
+  console.log("Current userSocketMap:", userSocketMap);
+  return socketIdArray[0] || null;
+}
 
 io.on("connection", (socket) => {
   console.log(
@@ -39,8 +55,10 @@ io.on("connection", (socket) => {
   );
 
   const userId = socket.userId;
-  userSocketMap[userId] = socket.id;
-  console.log(`User ${userId} mapped to socket ${socket.id}`);
+  addSocketForUser(userId, socket.id);
+  socket.join(userId);
+
+  console.log(`User ${userId} joined room ${userId}`);
   console.log("Updated userSocketMap:", userSocketMap);
 
   //io.emit() is used to send events to all connected clients
@@ -49,7 +67,7 @@ io.on("connection", (socket) => {
   //with socket.on we listen for events from clients
   socket.on("disconnect", () => {
     console.log("A user is disconnected:", socket.user.fullName);
-    delete userSocketMap[userId];
+    removeSocketForUser(userId, socket.id);
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
   });
 });

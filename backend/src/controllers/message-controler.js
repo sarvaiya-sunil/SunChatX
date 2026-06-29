@@ -1,7 +1,7 @@
 import User from "../models/User.js";
 import cloudinary from "../lib/cloudinary.js";
 import Message from "../models/Message.js";
-import { getReceiverUserId, io } from "../lib/socket.js";
+import { io } from "../lib/socket.js";
 
 export const getAllContacts = async (req, res) => {
   try {
@@ -67,31 +67,32 @@ export const sendMessage = async (req, res) => {
 
     await newMessage.save();
 
-    //send message in real-time to both sender and receiver
+    // send message in real-time to both sender and receiver
     const messageObject = newMessage.toObject
       ? newMessage.toObject()
       : newMessage;
 
-    const senderSocketId = getReceiverUserId(senderId.toString());
-    const receiverSocketId = getReceiverUserId(receiverId.toString());
+    const normalizedMessage = {
+      ...messageObject,
+      senderId: newMessage.senderId.toString(),
+      receiverId: newMessage.receiverId.toString(),
+      _id: newMessage._id.toString(),
+      createdAt: newMessage.createdAt,
+      updatedAt: newMessage.updatedAt,
+    };
+
+    const senderRoom = senderId.toString();
+    const receiverRoom = receiverId.toString();
 
     console.log(`Sending message from ${senderId} to ${receiverId}`);
-    console.log(`Sender socket ID: ${senderSocketId}`);
-    console.log(`Receiver socket ID: ${receiverSocketId}`);
+    console.log(`Sender room: ${senderRoom}`);
+    console.log(`Receiver room: ${receiverRoom}`);
 
-    // Emit to receiver
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", messageObject);
-      console.log(`Message emitted to receiver ${receiverSocketId}`);
-    } else {
-      console.log(`Receiver ${receiverId} is not online`);
-    }
+    io.to(receiverRoom).emit("newMessage", normalizedMessage);
+    console.log(`Message emitted to receiver room ${receiverRoom}`);
 
-    // Emit to sender (for real-time confirmation)
-    if (senderSocketId) {
-      io.to(senderSocketId).emit("newMessage", messageObject);
-      console.log(`Message emitted to sender ${senderSocketId}`);
-    }
+    io.to(senderRoom).emit("newMessage", normalizedMessage);
+    console.log(`Message emitted to sender room ${senderRoom}`);
 
     res.status(201).json(newMessage);
   } catch (error) {

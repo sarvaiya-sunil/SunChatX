@@ -86,7 +86,12 @@ export const useChatStore = create((set, get) => ({
       const finalMessages = optimisticMessages.filter(
         (msg) => msg._id !== tempId,
       );
-      finalMessages.push(res.data);
+      const alreadyExists = finalMessages.some(
+        (msg) => msg._id === res.data._id,
+      );
+      if (!alreadyExists) {
+        finalMessages.push(res.data);
+      }
       set({ messages: finalMessages });
     } catch (error) {
       set({ messages: messages });
@@ -108,23 +113,29 @@ export const useChatStore = create((set, get) => ({
       socket.off("newMessage");
       socket.on("newMessage", (newMessage) => {
         console.log("Received newMessage event:", newMessage);
-        const messageSenderId = newMessage.senderId?._id || newMessage.senderId;
+        const messageSenderId = String(
+          newMessage.senderId?._id || newMessage.senderId,
+        );
+        const messageReceiverId = String(
+          newMessage.receiverId?._id || newMessage.receiverId,
+        );
         const { authUser } = useAuthStore.getState();
-        const authUserId = authUser._id;
-        const selectedUserId = selectedUser._id?._id || selectedUser._id;
-
-        console.log(
-          `Comparing - messageSender: ${messageSenderId}, selectedUser: ${selectedUserId}, authUser: ${authUserId}`,
+        const authUserId = String(authUser._id);
+        const selectedUserId = String(
+          selectedUser._id?._id || selectedUser._id,
         );
 
-        // Check if message is from selected user OR if we're receiving our own message
-        const isMessageForThisChat =
-          messageSenderId === selectedUserId ||
-          messageSenderId.toString() === selectedUserId.toString() ||
-          messageSenderId === authUserId ||
-          messageSenderId.toString() === authUserId.toString();
+        console.log(
+          `Comparing - sender: ${messageSenderId}, receiver: ${messageReceiverId}, selected: ${selectedUserId}, auth: ${authUserId}`,
+        );
 
-        if (!isMessageForThisChat) {
+        const isForCurrentChat =
+          (messageSenderId === selectedUserId &&
+            messageReceiverId === authUserId) ||
+          (messageSenderId === authUserId &&
+            messageReceiverId === selectedUserId);
+
+        if (!isForCurrentChat) {
           console.log("Message not relevant to current chat, ignoring");
           return;
         }
